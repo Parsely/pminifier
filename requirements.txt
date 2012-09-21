@@ -1,4 +1,0 @@
-pymongo
-pylru
-pylibmc
-redis
