@@ -116,9 +116,14 @@ class CachedMinifier(Minifier):
     """
     Minifier that caches its operations through a user-defined decorator
     """
-    def __init__(self, mongo_host, mongo_db, cache_client,cache_decorator_class):
+    def __init__(self,
+                 mongo_host,
+                 mongo_db,
+                 cache_client,
+                 cache_decorator_class,
+                 lrusize=500):
         super(CachedMinifier,self).__init__(mongo_host, mongo_db, cache_client)
-        lrucache = lrudecorator(500)
+        lrucache = lrudecorator(lrusize)
         dec = cache_decorator_class(cache_client)
 
         self.base62_to_int = lrucache(dec(self.base62_to_int))

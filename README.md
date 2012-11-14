@@ -15,5 +15,6 @@ Usage
 
       from pminifier.minifier import CachedMinifier
       from pminifier.redis_cache_backend import RedisCacheBackend, cached as cache_decorator
-      minifier = CachedMinifier('localhost', 'minified_urls', RedisCacheBackend, cache_decorator)
-      minifier.get_id("http://google.com","test")
+      cache = RedisCacheBackend(host='localhost')
+      minifier = CachedMinifier('localhost', 'minified_urls', cache, cache_decorator)
+      minifier.get_id("http://google.com", "test")
