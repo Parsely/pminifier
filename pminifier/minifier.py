@@ -18,7 +18,7 @@ log = logging.getLogger('pminifier')
 
 class Minifier(object):
     alphabet = '2FQYNEJAUsbGu41zndZTeocMai5H7OIjXkKg8qyt3WC9hLplxfVBm0wSRr6vPD'
-    
+
     class DoesNotExist(Exception):
         "The requested URL does not exist in the table."
 
@@ -27,7 +27,7 @@ class Minifier(object):
         self.db = self.conn[mongo_db]
         self._init_mongo()
         self.client = cache_client
-       
+
     def _init_mongo(self):
         """Initialize mongo indexes and sharding."""
         # Index only when necessary. Many attempts to make the same index
@@ -55,11 +55,11 @@ class Minifier(object):
         if not coll_info or 'key' not in coll_info:
             self.conn.admin.command({'shardcollection': fullname,
                                      'key': {'_id': 1}})
-        
+
     def get_id(self, url, groupkey):
         """Returns the minified ID of the url"""
         return self._get(url, groupkey, as_str=True)
-    
+
     def _get(self, url, groupkey, as_str=False):
         if not url:
             return None
@@ -126,7 +126,5 @@ class CachedMinifier(Minifier):
         lrucache = lrudecorator(lrusize)
         dec = cache_decorator_class(cache_client)
 
-        self.base62_to_int = lrucache(dec(self.base62_to_int))
-        self.int_to_base62 = lrucache(dec(self.int_to_base62))
         self.get_string = lrucache(dec(self.get_string))
         self.get_id = lrucache(dec(self.get_id))
