@@ -63,6 +63,10 @@ class Minifier(object):
         """Returns the minified ID of the url"""
         return self._get(url, groupkey, as_str=True)
 
+    def get_multiple_ids(self, urls, groupkey):
+        """Returns the minified ID of the url"""
+        return self._get_id_multi(urls, groupkey, as_str=True)
+
     def _get(self, url, groupkey, as_str=False):
         if not url:
             return None
@@ -79,6 +83,58 @@ class Minifier(object):
                                 'url': url,
                                 'groupkey': groupkey}, safe=True)
         return self.int_to_base62(counter['value']) if as_str else counter['value']
+
+    def _get_id_multi(self, urls, groupkey, as_str=False):
+        if not urls:
+            return None
+
+        entries = self.db.urlById.find({'url': {'$in':urls}}, fields=['_id', 'groupkey','url'])
+        entries = [e for e in entries if e.get('groupkey') == groupkey]
+        found = set([entry['url'] for entry in entries])
+        notfound = set(urls) - set(found)
+        res = {}
+
+        for entry in entries:
+            res[entry['url']] = self.int_to_base62(entry['_id']) if as_str else entry[0]['_id']
+
+        if len(notfound) == 0:
+            return res
+
+        # Create new entry for keys not found
+        for url in notfound:
+            counter = self.db.urlByIdMeta.find_and_modify(query={'_id': 'minifier_counter'},
+                                                          update={'$inc': {'value': 1}},
+                                                          upsert=True, new=True)
+            self.db.urlById.insert({'_id': counter['value'],
+                                    'url': url,
+                                    'groupkey': groupkey}, safe=True)
+            
+            value = self.int_to_base62(counter['value']) if as_str else counter['value']
+            res[url] = value
+            
+        return res
+
+    def get_multiple_strings(self, ids):
+        """Looks up the string by its IDs (minified or integer form)"""  
+        converted = {}
+        for id in ids:
+            if isinstance(id, basestring):
+                converted[self.base62_to_int(id)] = id 
+            else:
+                converted[id] = id
+
+        criteria = {'_id':{'$in':converted.keys()}}
+        entries = self.db.urlById.find(criteria, fields=['url'])
+        res = {}
+
+        for entry in entries:
+            res[entry['url']] = converted[ entry['_id'] ]
+        
+        notfound = set(converted.values()) - set(res.values())
+        for url in notfound:
+            res[url] = None
+
+        return res
 
     def get_string(self, id):
         """Looks up the string by its ID (minified or integer form)"""
@@ -131,3 +187,6 @@ class CachedMinifier(Minifier):
 
         self.get_string = lrucache(dec(self.get_string))
         self.get_id = lrucache(dec(self.get_id))
+
+        self.get_multiple_ids = (dec(self.get_multiple_ids))
+        self.get_multiple_strings = (dec(self.get_multiple_strings))
