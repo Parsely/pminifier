@@ -23,7 +23,10 @@ class Minifier(object):
         "The requested URL does not exist in the table."
 
     def __init__(self, mongo_host, mongo_db, cache_client):
-        self.conn = pymongo.Connection(mongo_host)
+        if isinstance(mongo_host, basestring):
+            self.conn = pymongo.Connection(mongo_host)
+        else:
+            self.conn = mongo_host
         self.db = self.conn[mongo_db]
         self._init_mongo()
         self.client = cache_client
