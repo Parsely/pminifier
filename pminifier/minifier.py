@@ -195,7 +195,7 @@ class CachedMinifier(Minifier):
             cached_items = self._get_from_cache(single_item_func, keys, more_args)
 
             # retrieve the uncached items
-            uncached_keys = set(keys) - set(cached_items.keys())
+            uncached_keys = list(set(keys) - set(cached_items.keys()))
             uncached_args = [uncached_keys] + list(more_args)
             super_func = getattr(super(CachedMinifier, self), func.__name__)
             uncached_items = super_func(*uncached_args)
@@ -210,7 +210,7 @@ class CachedMinifier(Minifier):
 
     def _get_key(self, single_item_func, item, more_args):
         if more_args:
-            args = tuple([self, item] + more_args)
+            args = tuple([self, item] + list(more_args))
         else:
             args = (self, item,)
         key = self.dec._cache_key(single_item_func, args, {})
