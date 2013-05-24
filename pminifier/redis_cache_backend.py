@@ -16,6 +16,10 @@ class RedisCacheBackend(CacheBackend):
             return None
         return pickle.loads(value)
 
+    def get_all(self, keys):
+        values = self.client.mget(keys)
+        return [(pickle.loads(value) if value else None) for value in values]
+
     def set(self, key, value):
         if self.timeout:
             self.client.set(key, pickle.dumps(value))

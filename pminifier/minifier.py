@@ -209,11 +209,16 @@ class CachedMinifier(Minifier):
 
     def _get_from_cache(self, single_item_func, items, more_args=None):
         datas = {}
-        for item in items:
-            key = self._get_key(single_item_func, item, more_args)
-            data = self.client.get(key)
-            if data:
-                datas.setdefault(item, data)
+        if hasattr(self.client, 'get_all'):
+            keys = [self._get_key(single_item_func, item, more_args) for item in items]
+            data = self.client.get_all(keys)
+            datas = {k:v for k,v in zip(items, data) if v}
+        else:
+            for item in items:
+                key = self._get_key(single_item_func, item, more_args)
+                data = self.client.get(key)
+                if data:
+                    datas.setdefault(item, data)
         return datas
 
 
