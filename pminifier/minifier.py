@@ -176,14 +176,32 @@ class CachedMinifier(Minifier):
         self.dec = dec
 
     def _multiple_item_cache(self, func, single_item_func):
+        """
+        Wraps a function that gets multiple items with caching on a per item
+        basis.
+
+        ie a decorated get_multiple_strings(ids) will:
+            - check the cache per id;
+            - get any items that weren't in the cache;
+            - store the items retrieved in the cache;
+            - return all results regardless of cache.
+
+        This decorator assumes that the first arg is the list of keys.
+        """
         def _wrapped(*args, **kw):
-            keys = args[0]
-            more_args = args[1:]
+            keys = args[0] # grab the list of keys
+            more_args = args[1:] # store the rest of the args
+
+            # retrieve the cached items
             cached_items = self._get_from_cache(single_item_func, keys, more_args)
+
+            # retrieve the uncached items
             uncached_keys = set(keys) - set(cached_items.keys())
             uncached_args = [uncached_keys] + list(more_args)
             super_func = getattr(super(CachedMinifier, self), func.__name__)
             uncached_items = super_func(*uncached_args)
+
+            # cache what wasn't cached
             self._set_in_cache(single_item_func, uncached_items, more_args)
             cached_items.update(uncached_items)
 
