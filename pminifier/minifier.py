@@ -165,44 +165,37 @@ class CachedMinifier(Minifier):
         lrucache = lrudecorator(lrusize)
         dec = cache_decorator_class(cache_client)
 
-        self._uncached_get_string = self.get_string
-        self._uncached_get_id = self.get_id
-        
+        self.get_multiple_strings = self._multiple_item_cache(self.get_multiple_strings,
+                                                              self.get_string)
+        self.get_multiple_ids = self._multiple_item_cache(self.get_multiple_ids,
+                                                          self.get_id)
+
         self.get_string = lrucache(dec(self.get_string))
         self.get_id = lrucache(dec(self.get_id))
-
+        
         self.dec = dec
 
+    def _multiple_item_cache(self, func, single_item_func):
+        def _wrapped(*args, **kw):
+            keys = args[0]
+            more_args = args[1:]
+            cached_items = self._get_from_cache(single_item_func, keys, more_args)
+            uncached_keys = set(keys) - set(cached_items.keys())
+            uncached_args = [uncached_keys] + list(more_args)
+            super_func = getattr(super(CachedMinifier, self), func.__name__)
+            uncached_items = super_func(*uncached_args)
+            self._set_in_cache(single_item_func, uncached_items, more_args)
+            cached_items.update(uncached_items)
 
-    def get_multiple_ids(self, urls, groupkey):
-        single_item_func = self._uncached_get_id
-        cached_ids = self._get_from_cache(single_item_func, urls, [groupkey])
-        uncached_urls = set(urls) - set(cached_ids.keys())
-        uncached_ids = super(CachedMinifier, self).get_multiple_ids(uncached_urls,
-                                                                    groupkey)
-        self._set_in_cache(single_item_func, uncached_ids, [groupkey])
-        cached_ids.update(uncached_ids)
-
-        return cached_ids
-
-
-    def get_multiple_strings(self, ids):
-        single_item_func = self._uncached_get_string
-        cached_strings = self._get_from_cache(single_item_func, ids)
-        uncached_ids = set(ids) - set(cached_strings.keys())
-        uncached_strings = super(CachedMinifier,
-                                 self).get_multiple_strings(uncached_ids)
-        self._set_in_cache(single_item_func, uncached_strings)
-        cached_strings.update(uncached_strings)
-
-        return cached_strings
+            return cached_items
+        return _wrapped
 
 
     def _get_key(self, single_item_func, item, more_args):
         if more_args:
-            args = tuple([item] + more_args)
+            args = tuple([self, item] + more_args)
         else:
-            args = (item,)
+            args = (self, item,)
         key = self.dec._cache_key(single_item_func, args, {})
         return key
 
