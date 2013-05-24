@@ -61,28 +61,12 @@ class Minifier(object):
 
     def get_id(self, url, groupkey):
         """Returns the minified ID of the url"""
-        return self._get(url, groupkey, as_str=True)
+        res = self._get_id_multi([url], groupkey, as_str=True)
+        return res[url] if res else None
 
     def get_multiple_ids(self, urls, groupkey):
         """Returns the minified ID of the url"""
         return self._get_id_multi(urls, groupkey, as_str=True)
-
-    def _get(self, url, groupkey, as_str=False):
-        if not url:
-            return None
-        entries = self.db.urlById.find({'url': url}, fields=['_id', 'groupkey'])
-        entries = [e for e in entries if e.get('groupkey') == groupkey]
-        if entries:
-            return self.int_to_base62(entries[0]['_id']) if as_str else entries[0]['_id']
-
-        # Create new entry if not found
-        counter = self.db.urlByIdMeta.find_and_modify(query={'_id': 'minifier_counter'},
-                                                      update={'$inc': {'value': 1}},
-                                                      upsert=True, new=True)
-        self.db.urlById.insert({'_id': counter['value'],
-                                'url': url,
-                                'groupkey': groupkey}, safe=True)
-        return self.int_to_base62(counter['value']) if as_str else counter['value']
 
     def _get_id_multi(self, urls, groupkey, as_str=False):
         if not urls:
@@ -92,8 +76,8 @@ class Minifier(object):
         entries = [e for e in entries if e.get('groupkey') == groupkey]
         found = set([entry['url'] for entry in entries])
         notfound = set(urls) - set(found)
-        res = {}
 
+        res = {}
         for entry in entries:
             res[entry['url']] = self.int_to_base62(entry['_id']) if as_str else entry[0]['_id']
 
@@ -128,9 +112,9 @@ class Minifier(object):
         res = {}
 
         for entry in entries:
-            res[entry['url']] = converted[ entry['_id'] ]
+            res[converted[ entry['_id'] ]] = entry['url']
         
-        notfound = set(converted.values()) - set(res.values())
+        notfound = set(converted.values()) - set(res.keys())
         for url in notfound:
             res[url] = None
 
@@ -138,15 +122,11 @@ class Minifier(object):
 
     def get_string(self, id):
         """Looks up the string by its ID (minified or integer form)"""
-        if isinstance(id, basestring):
-            entry = self.db.urlById.find_one({'_id': self.base62_to_int(id)}, fields=['url'])
-        else:
-            entry = self.db.urlById.find_one({'_id': id}, fields=['url'])
-
-        if not entry:
-            raise Minifier.DoesNotExist('The URL provided does not exist ' +
-                                        'in the minification table.')
-        return entry['url']
+        res = self.get_multiple_strings([id])
+        if not res:
+                raise Minifier.DoesNotExist('The URL provided does not exist ' +
+                                            'in the minification table.')
+        return res[id]
 
     def int_to_base62(self, id):
         """Convert the int id to a user-friendly string using base62"""
@@ -185,8 +165,60 @@ class CachedMinifier(Minifier):
         lrucache = lrudecorator(lrusize)
         dec = cache_decorator_class(cache_client)
 
+        self._uncached_get_string = self.get_string
+        self._uncached_get_id = self.get_id
+        
         self.get_string = lrucache(dec(self.get_string))
         self.get_id = lrucache(dec(self.get_id))
 
-        self.get_multiple_ids = (dec(self.get_multiple_ids))
-        self.get_multiple_strings = (dec(self.get_multiple_strings))
+        self.dec = dec
+
+
+    def get_multiple_ids(self, urls, groupkey):
+        single_item_func = self._uncached_get_id
+        cached_ids = self._get_from_cache(single_item_func, urls, [groupkey])
+        uncached_urls = set(urls) - set(cached_ids.keys())
+        uncached_ids = super(CachedMinifier, self).get_multiple_ids(uncached_urls,
+                                                                    groupkey)
+        self._set_in_cache(single_item_func, uncached_ids, [groupkey])
+        cached_ids.update(uncached_ids)
+
+        return cached_ids
+
+
+    def get_multiple_strings(self, ids):
+        single_item_func = self._uncached_get_string
+        cached_strings = self._get_from_cache(single_item_func, ids)
+        uncached_ids = set(ids) - set(cached_strings.keys())
+        uncached_strings = super(CachedMinifier,
+                                 self).get_multiple_strings(uncached_ids)
+        self._set_in_cache(single_item_func, uncached_strings)
+        cached_strings.update(uncached_strings)
+
+        return cached_strings
+
+
+    def _get_key(self, single_item_func, item, more_args):
+        if more_args:
+            args = tuple([item] + more_args)
+        else:
+            args = (item,)
+        key = self.dec._cache_key(single_item_func, args, {})
+        return key
+
+
+    def _get_from_cache(self, single_item_func, items, more_args=None):
+        datas = {}
+        for item in items:
+            key = self._get_key(single_item_func, item, more_args)
+            data = self.client.get(key)
+            if data:
+                datas.setdefault(item, data)
+        return datas
+
+
+    def _set_in_cache(self, single_item_func, results, more_args=None):
+        for item in results:
+            res = results[item]
+            key = self._get_key(single_item_func, item, more_args)
+            self.client.set(key, res)
