@@ -22,14 +22,13 @@ class Minifier(object):
     class DoesNotExist(Exception):
         "The requested URL does not exist in the table."
 
-    def __init__(self, mongo_host, mongo_db, cache_client):
+    def __init__(self, mongo_host, mongo_db):
         if isinstance(mongo_host, basestring) or isinstance(mongo_host, list):
             self.conn = pymongo.Connection(mongo_host)
         else:
             self.conn = mongo_host
         self.db = self.conn[mongo_db]
         self._init_mongo()
-        self.client = cache_client
 
     def _init_mongo(self):
         """Initialize mongo indexes and sharding."""
@@ -161,19 +160,19 @@ class CachedMinifier(Minifier):
                  cache_client,
                  cache_decorator_class,
                  lrusize=500):
-        super(CachedMinifier,self).__init__(mongo_host, mongo_db, cache_client)
+        super(CachedMinifier,self).__init__(mongo_host, mongo_db)
         lrucache = lrudecorator(lrusize)
-        dec = cache_decorator_class(cache_client)
+        self.cache_client = cache_client
+        self.dec = cache_decorator_class(cache_client)
 
         self.get_multiple_strings = self._multiple_item_cache(self.get_multiple_strings,
                                                               self.get_string)
         self.get_multiple_ids = self._multiple_item_cache(self.get_multiple_ids,
                                                           self.get_id)
 
-        self.get_string = lrucache(dec(self.get_string))
-        self.get_id = lrucache(dec(self.get_id))
+        self.get_string = lrucache(self.dec(self.get_string))
+        self.get_id = lrucache(self.dec(self.get_id))
         
-        self.dec = dec
 
     def _multiple_item_cache(self, func, single_item_func):
         """
@@ -222,12 +221,12 @@ class CachedMinifier(Minifier):
         key_mapping = {self._get_key(single_item_func, item, more_args): item
                        for item in items}
         datas = {}
-        if hasattr(self.client, 'get_all'):
-            data = self.client.get_all(key_mapping.keys())
+        if hasattr(self.cache_client, 'get_all'):
+            data = self.cache_client.get_all(key_mapping.keys())
             datas = {k:v for k,v in zip(items, data) if v}
         else:
             for key in keys:
-                data = self.client.get(key)
+                data = self.cache_client.get(key)
                 if data:
                     datas.setdefault(key_mapping.get(key), data)
         return datas
@@ -237,4 +236,4 @@ class CachedMinifier(Minifier):
         for item in results:
             res = results[item]
             key = self._get_key(single_item_func, item, more_args)
-            self.client.set(key, res)
+            self.cache_client.set(key, res)
