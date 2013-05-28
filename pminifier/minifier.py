@@ -192,7 +192,7 @@ class CachedMinifier(Minifier):
             more_args = args[1:] # store the rest of the args
 
             # retrieve the cached items
-            cached_items = self._get_from_cache(single_item_func, keys, more_args)
+            cached_items = self._get_from_cache(single_item_func, keys, more_args) if keys else {}
 
             # retrieve the uncached items
             uncached_keys = list(set(keys) - set(cached_items.keys()))
