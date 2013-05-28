@@ -201,8 +201,9 @@ class CachedMinifier(Minifier):
             uncached_items = super_func(*uncached_args)
 
             # cache what wasn't cached
-            self._set_in_cache(single_item_func, uncached_items, more_args)
-            cached_items.update(uncached_items)
+            if uncached_items:
+                self._set_in_cache(single_item_func, uncached_items, more_args)
+                cached_items.update(uncached_items)
 
             return cached_items
         return _wrapped
