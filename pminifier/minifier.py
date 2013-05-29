@@ -91,18 +91,18 @@ class Minifier(object):
             self.db.urlById.insert({'_id': counter['value'],
                                     'url': url,
                                     'groupkey': groupkey}, safe=True)
-            
+
             value = self.int_to_base62(counter['value']) if as_str else counter['value']
             res[url] = value
-            
+
         return res
 
     def get_multiple_strings(self, ids):
-        """Looks up the string by its IDs (minified or integer form)"""  
+        """Looks up the string by its IDs (minified or integer form)"""
         converted = {}
         for id in ids:
             if isinstance(id, basestring):
-                converted[self.base62_to_int(id)] = id 
+                converted[self.base62_to_int(id)] = id
             else:
                 converted[id] = id
 
@@ -112,7 +112,7 @@ class Minifier(object):
 
         for entry in entries:
             res[converted[ entry['_id'] ]] = entry['url']
-        
+
         notfound = set(converted.values()) - set(res.keys())
         for url in notfound:
             res[url] = None
@@ -172,7 +172,7 @@ class CachedMinifier(Minifier):
 
         self.get_string = lrucache(self.dec(self.get_string))
         self.get_id = lrucache(self.dec(self.get_id))
-        
+
 
     def _multiple_item_cache(self, func, single_item_func):
         """
@@ -238,3 +238,87 @@ class CachedMinifier(Minifier):
             res = results[item]
             key = self._get_key(single_item_func, item, more_args)
             self.cache_client.set(key, res)
+
+
+
+class SimplerMinifier(Minifier):
+    # mini:<group_key>:<type (id|str)>:<hash>
+    key_format = "mini:{group_key}:{get_type}:{hashed}"
+    cache_expiry = 60 * 60 * 24 # these don't go bad, set expire to 1d
+
+    def __init__(self, mongo_db, redis_conn, group_key):
+        self._mongo_db = mongo_db
+        self._cache_conn = redis_conn
+        self.group_key = group_key
+        super(SimplerMinifier,self).__init__(mongo_db.connection, mongo_db.name)
+
+    @lrudecorator(500)
+    def get_id(self, url):
+        return get_ids([url]).get(url)
+
+    def get_ids(self, urls):
+        """returns minified for the given urls"""
+        lookup_func = lambda items: self._get_id_multi(items,
+                                                       self.group_key,
+                                                       as_str=True)
+        return self._get_items(urls, 'str', lookup_func)
+
+
+    @lrudecorator(500)
+    def get_string(self, minifier_id):
+        res = self.get_strings([minifier_id]).get(minifier_id)
+        if not res:
+            raise Minifier.DoesNotExist('The URL provided does not exist.')
+        return res
+
+    def get_strings(self, minifier_ids):
+        """Looks up the string by its ID (minified or integer form)"""
+        def lookup_func(items):
+            # decode from base62 to int
+            from_int = {self.base62_to_int(item): item for item in minifier_ids}
+            criteria = {'_id': {'$in': from_int.keys()}}
+            urls = self._mongo_db.urlById.find(criteria, fields=['url'])
+            return {from_int[rec["_id"]]: rec["url"] for rec in urls}
+
+        return self._get_items(minifier_ids, "id", lookup_func)
+
+
+    def _get_items(self, items, get_type, lookup_func):
+        """Looks up the string by its ID (minified or integer form)"""
+        if not items:
+            return {}
+        keys = self._cache_key_names(get_type, items)
+
+        # check cache
+        lookup_keys = keys.keys()
+        res = {key: val for key, val in zip(lookup_keys,
+                                            self._cache_conn.mget(lookup_keys)) if val}
+
+        missing_keys = set(keys.keys()) - set(res.keys())
+        if missing_keys:
+            missing_items = {keys[key]: key for key in missing_keys}
+            found = lookup_func(missing_items.keys())
+
+            # convert from {item: val} to {cache_key: val} so we can cache
+            found = {missing_items[item]: val for item, val in found.iteritems()}
+            self._store_cache(found)
+            res.update(found)
+
+        # the res now is cache_key -> minified, translate that to url -> minified
+        return {keys[key]: val for key, val in res.iteritems()}
+
+
+    def _cache_key_names(self, get_type, keys):
+        """generates a {cache_key: key} dict for the given keys"""
+        return {self.key_format.format(group_key=self.group_key,
+                                       get_type=get_type,
+                                       hashed=md5.md5(unicode(key)).hexdigest()): key for key in keys}
+
+    def _store_cache(self, cache_dict):
+        """saves the dict to cache with the default expiration"""
+        with self._cache_conn.pipeline() as pipe:
+            for cache_key, val in cache_dict.iteritems():
+                # need reverse key now
+                pipe.set(cache_key, val)
+                pipe.expire(cache_key, self.cache_expiry)
+            pipe.execute()
