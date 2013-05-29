@@ -254,7 +254,7 @@ class SimplerMinifier(Minifier):
 
     @lrudecorator(500)
     def get_id(self, url):
-        return get_ids([url]).get(url)
+        return self.get_ids([url]).get(url)
 
     def get_ids(self, urls):
         """returns minified for the given urls"""
