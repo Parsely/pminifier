@@ -275,7 +275,7 @@ class SimplerMinifier(Minifier):
         """Looks up the string by its ID (minified or integer form)"""
         def lookup_func(items):
             # decode from base62 to int
-            from_int = {self.base62_to_int(item): item for item in minifier_ids}
+            from_int = {self.base62_to_int(item): item for item in items}
             criteria = {'_id': {'$in': from_int.keys()}}
             urls = self._mongo_db.urlById.find(criteria, fields=['url'])
             return {from_int[rec["_id"]]: rec["url"] for rec in urls}
