@@ -312,7 +312,7 @@ class SimplerMinifier(Minifier):
         """generates a {cache_key: key} dict for the given keys"""
         return {self.key_format.format(group_key=self.group_key,
                                        get_type=get_type,
-                                       hashed=md5.md5(unicode(key, 'utf8')).hexdigest()): key for key in keys}
+                                       hashed=md5.md5(unicode(key)).hexdigest()): key for key in keys}
 
     def _store_cache(self, cache_dict):
         """saves the dict to cache with the default expiration"""
