@@ -1,16 +1,12 @@
 import unittest
 import sys
 import os
-import mock
 
 from pminifier.test.integration import PMinifierIntegrationTest
 from pminifier.minifier import SimplerMinifier, Minifier
 
 class SimplerMinifierTests(PMinifierIntegrationTest):
     def setUp(self):
-        mongo_db = mock.MagicMock()
-        mongo_db.connecton.return_value = self.cluster.mongo.conn
-        mongo_db.name.return_value = 'pminifier'
         self.m = SimplerMinifier((self.cluster.mongo.conn, 'pminifier'),
                                  self.cluster.redis.conn,
                                  'groupkey')
