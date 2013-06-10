@@ -1,39 +1,16 @@
 import unittest
-import pymongo
-from minifier import CachedMinifier
-from memcached_cache_backend import MemcachedCacheBackend, cached as cache_decorator
+import sys
+import os
 
-MONGO_HOST = '127.0.0.1'
-MONGO_DB = 'test_minifier'
+from pminifier.test.integration import PMinifierIntegrationTest
+from pminifier.minifier import Minifier
 
-class MinifierTestCase(unittest.TestCase):
+class MinifierIntegrationTests(PMinifierIntegrationTest):
     def __init__(self, *args, **kwargs):
-        self.cache = MemcachedCacheBackend({'host':['localhost:11211']})
         super(MinifierTestCase, self).__init__(*args, **kwargs)
 
-    def clear_mongo(self):
-        self.conn = pymongo.Connection(MONGO_HOST)
-        self.db = self.conn[MONGO_DB]
-        self.db.urlByIdMeta.remove()
-        self.db.urlById.remove()
-
-    def clear_cache(self):
-        self.cache.clear()
-        
     def setUp(self):
-        self.m = CachedMinifier(MONGO_HOST, MONGO_DB, self.cache, cache_decorator)
-        self.clear_cache()
-        self.clear_mongo()
-
-    def tearDown(self):
-        self.clear_cache()
-        self.clear_mongo()
-
-    def runTest(self):
-        self.test_int_to_base62()
-        self.test_retrieve_bad_urls()
-        self.test_store_and_retrieve_urls()
-        self.test_store_and_retrieve_same_url()
+        self.m = Minifier(self.cluster.mongo.conn, 'pminifier')
 
     def test_int_to_base62(self):
         self.assertEqual('YJb9aEh6bZubT', self.m.int_to_base62(9999999999999999999999))
@@ -48,7 +25,7 @@ class MinifierTestCase(unittest.TestCase):
         self.assertEqual(99, self.m.base62_to_int('Fq'))
 
     def test_retrieve_bad_urls(self):
-        self.assertRaises(CachedMinifier.DoesNotExist, self.m.get_string, 9001)
+        self.assertRaises(Minifier.DoesNotExist, self.m.get_string, 9001)
 
     def test_store_and_retrieve_same_url(self):
         o_id = self.m.get_id("http://www.youtube.com/", 'test')
@@ -74,6 +51,6 @@ if __name__ == '__main__':
     """Run the tests with and without memcached/caching enabled."""
     suite = unittest.TestSuite()
     for cache_hosts in [[], ['127.0.0.1']]:
-        test = MinifierTestCase()
+        test = MinifierIntegrationTests()
         suite.addTest(test)
     unittest.TextTestRunner(verbosity=2).run(suite)
