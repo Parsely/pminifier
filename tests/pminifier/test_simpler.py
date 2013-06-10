@@ -22,6 +22,12 @@ class SimplerMinifierTests(PMinifierIntegrationTest):
         counter_value = self.m._get_current_counter_value()
         self.assertTrue(isinstance(counter_value, int))
 
+    def test_cache_keys(self):
+        try:
+            self.m._cache_key_names('str', ['string based key'])
+        except:
+            self.fail('_cache_key_names threw an exception')
+
     def test_store_and_retrieve_urls(self):
         urls_oid = []
         urls = ["http://google.com", "http://www.google.com",

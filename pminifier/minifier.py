@@ -317,7 +317,6 @@ class SimplerMinifier(Minifier):
         # the res now is cache_key -> minified, translate that to url -> minified
         return {keys[key]: val for key, val in res.iteritems()}
 
-
     def _cache_key_names(self, get_type, keys):
         """generates a {cache_key: key} dict for the given keys"""
         return {self.key_format.format(group_key=self.group_key,
