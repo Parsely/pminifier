@@ -7,7 +7,7 @@ from pminifier.minifier import Minifier
 
 class MinifierIntegrationTests(PMinifierIntegrationTest):
     def __init__(self, *args, **kwargs):
-        super(MinifierTestCase, self).__init__(*args, **kwargs)
+        super(MinifierIntegrationTests, self).__init__(*args, **kwargs)
 
     def setUp(self):
         self.m = Minifier(self.cluster.mongo.conn, 'pminifier')
