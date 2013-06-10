@@ -13,14 +13,14 @@ class MinifierIntegrationTests(PMinifierIntegrationTest):
         self.m = Minifier(self.cluster.mongo.conn, 'pminifier')
 
     def test_int_to_base62(self):
-        self.assertEqual('YJb9aEh6bZubT', self.m.int_to_base62(9999999999999999999999))
+        self.assertEqual('LfqqC7n0s', self.m.int_to_base62(9999999999999999))
         self.assertEqual('0U', self.m.int_to_base62(3294))
         self.assertEqual('Fq', self.m.int_to_base62(99))
         self.assertRaises(ValueError, self.m.int_to_base62, -1)
         self.assertRaises(TypeError, self.m.int_to_base62, "chipmunks")
 
     def test_base62_to_int(self):
-        self.assertEqual(9999999999999999999999, self.m.base62_to_int('YJb9aEh6bZubT'))
+        self.assertEqual(9999999999999999, self.m.base62_to_int('LfqqC7n0s'))
         self.assertEqual(3294, self.m.base62_to_int('0U'))
         self.assertEqual(99, self.m.base62_to_int('Fq'))
 

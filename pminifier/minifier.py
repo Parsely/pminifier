@@ -122,7 +122,7 @@ class Minifier(object):
     def get_string(self, id):
         """Looks up the string by its ID (minified or integer form)"""
         res = self.get_multiple_strings([id])
-        if not res:
+        if not res or not res.get(id):
                 raise Minifier.DoesNotExist('The URL provided does not exist ' +
                                             'in the minification table.')
         return res[id]
@@ -147,7 +147,7 @@ class Minifier(object):
         l = len(self.alphabet)
         output = 0
         for i, c in enumerate(s):
-            output += self.alphabet.index(c) * math.pow(l, i)
+            output += int(self.alphabet.index(c) * math.pow(l, i))
         return int(output)
 
 class CachedMinifier(Minifier):
