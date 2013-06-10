@@ -85,17 +85,21 @@ class Minifier(object):
 
         # Create new entry for keys not found
         for url in notfound:
-            counter = self.db.urlByIdMeta.find_and_modify(query={'_id': 'minifier_counter'},
-                                                          update={'$inc': {'value': 1}},
-                                                          upsert=True, new=True)
-            self.db.urlById.insert({'_id': counter['value'],
+            counter_value = self._get_current_counter_value()
+            self.db.urlById.insert({'_id': counter_value,
                                     'url': url,
                                     'groupkey': groupkey}, safe=True)
 
-            value = self.int_to_base62(counter['value']) if as_str else counter['value']
+            value = self.int_to_base62(counter_value) if as_str else counter_value
             res[url] = value
 
         return res
+
+    def _get_current_counter_value(self):
+        counter = self.db.urlByIdMeta.find_and_modify(query={'_id': 'minifier_counter'},
+                                                          update={'$inc': {'value': 1}},
+                                                          upsert=True, new=True)
+        return counter['value']
 
     def get_multiple_strings(self, ids):
         """Looks up the string by its IDs (minified or integer form)"""
@@ -247,10 +251,16 @@ class SimplerMinifier(Minifier):
     cache_expiry = 60 * 60 * 24 # these don't go bad, set expire to 1d
 
     def __init__(self, mongo_db, redis_conn, group_key):
-        self._mongo_db = mongo_db
         self._cache_conn = redis_conn
         self.group_key = group_key
-        super(SimplerMinifier,self).__init__(mongo_db.connection, mongo_db.name)
+        if isinstance(mongo_db, tuple):
+            connection, name = mongo_db
+            super(SimplerMinifier,self).__init__(connection, name)
+            self._mongo_db = self.db
+        else:
+            self._mongo_db = mongo_db
+            super(SimplerMinifier,self).__init__(mongo_db.connection, mongo_db.name)
+                
 
     @lrudecorator(500)
     def get_id(self, url):

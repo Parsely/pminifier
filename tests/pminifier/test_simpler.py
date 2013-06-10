@@ -1,35 +1,30 @@
 import unittest
 import sys
 import os
+import mock
 
 from pminifier.test.integration import PMinifierIntegrationTest
-from pminifier.minifier import Minifier
+from pminifier.minifier import SimplerMinifier, Minifier
 
-class MinifierIntegrationTests(PMinifierIntegrationTest):
-    def __init__(self, *args, **kwargs):
-        super(MinifierIntegrationTests, self).__init__(*args, **kwargs)
-
+class SimplerMinifierTests(PMinifierIntegrationTest):
     def setUp(self):
-        self.m = Minifier(self.cluster.mongo.conn, 'pminifier')
-
-    def test_int_to_base62(self):
-        self.assertEqual('LfqqC7n0s', self.m.int_to_base62(9999999999999999))
-        self.assertEqual('0U', self.m.int_to_base62(3294))
-        self.assertEqual('Fq', self.m.int_to_base62(99))
-        self.assertRaises(ValueError, self.m.int_to_base62, -1)
-        self.assertRaises(TypeError, self.m.int_to_base62, "chipmunks")
-
-    def test_base62_to_int(self):
-        self.assertEqual(9999999999999999, self.m.base62_to_int('LfqqC7n0s'))
-        self.assertEqual(3294, self.m.base62_to_int('0U'))
-        self.assertEqual(99, self.m.base62_to_int('Fq'))
+        mongo_db = mock.MagicMock()
+        mongo_db.connecton.return_value = self.cluster.mongo.conn
+        mongo_db.name.return_value = 'pminifier'
+        self.m = SimplerMinifier((self.cluster.mongo.conn, 'pminifier'),
+                                 self.cluster.redis.conn,
+                                 'groupkey')
 
     def test_retrieve_bad_urls(self):
-        self.assertRaises(Minifier.DoesNotExist, self.m.get_string, 9001)
+        self.assertRaises(Minifier.DoesNotExist, self.m.get_string, "AfTea")
 
     def test_store_and_retrieve_same_url(self):
-        o_id = self.m.get_id("http://www.youtube.com/", 'test')
-        self.assertEqual(o_id, self.m.get_id("http://www.youtube.com/", 'test'))
+        o_id = self.m.get_id("http://www.youtube.com/")
+        self.assertEqual(o_id, self.m.get_id("http://www.youtube.com/"))
+
+    def test_counter(self):
+        counter_value = self.m._get_current_counter_value()
+        self.assertTrue(isinstance(counter_value, int))
 
     def test_store_and_retrieve_urls(self):
         urls_oid = []
@@ -40,7 +35,7 @@ class MinifierIntegrationTests(PMinifierIntegrationTest):
                 "potato", "potato"]
         for url in urls:
             url = unicode(url)
-            o_id = self.m.get_id(url, 'test')
+            o_id = self.m.get_id(url)
             self.assertEqual(url, self.m.get_string(o_id))
             # Check integrity of IDs
             urls_oid.append((o_id, url))
@@ -48,9 +43,9 @@ class MinifierIntegrationTests(PMinifierIntegrationTest):
                 self.assertEqual(check_url, self.m.get_string(check_id))
 
 if __name__ == '__main__':
-    """Run the tests without caching enabled."""
+    """Run the tests with caching enabled."""
     suite = unittest.TestSuite()
     for cache_hosts in [[], ['127.0.0.1']]:
-        test = MinifierIntegrationTests()
+        test = SimplerMinifierTests()
         suite.addTest(test)
     unittest.TextTestRunner(verbosity=2).run(suite)
