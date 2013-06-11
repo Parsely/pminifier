@@ -169,79 +169,10 @@ class CachedMinifier(Minifier):
         self.cache_client = cache_client
         self.dec = cache_decorator_class(cache_client)
 
-        self.get_multiple_strings = self._multiple_item_cache(self.get_multiple_strings,
-                                                              self.get_string)
-        self.get_multiple_ids = self._multiple_item_cache(self.get_multiple_ids,
-                                                          self.get_id)
-
         self.get_string = lrucache(self.dec(self.get_string))
         self.get_id = lrucache(self.dec(self.get_id))
-
-
-    def _multiple_item_cache(self, func, single_item_func):
-        """
-        Wraps a function that gets multiple items with caching on a per item
-        basis.
-
-        ie a decorated get_multiple_strings(ids) will:
-            - check the cache per id;
-            - get any items that weren't in the cache;
-            - store the items retrieved in the cache;
-            - return all results regardless of cache.
-
-        This decorator assumes that the first arg is the list of keys.
-        """
-        def _wrapped(*args, **kw):
-            keys = args[0] # grab the list of keys
-            more_args = args[1:] # store the rest of the args
-
-            # retrieve the cached items
-            cached_items = self._get_from_cache(single_item_func, keys, more_args) if keys else {}
-
-            # retrieve the uncached items
-            uncached_keys = list(set(keys) - set(cached_items.keys()))
-            uncached_args = [uncached_keys] + list(more_args)
-            super_func = getattr(super(CachedMinifier, self), func.__name__)
-            uncached_items = super_func(*uncached_args)
-
-            # cache what wasn't cached
-            if uncached_items:
-                self._set_in_cache(single_item_func, uncached_items, more_args)
-                cached_items.update(uncached_items)
-
-            return cached_items
-        return _wrapped
-
-
-    def _get_key(self, single_item_func, item, more_args):
-        if more_args:
-            args = tuple([self, item] + list(more_args))
-        else:
-            args = (self, item,)
-        key = self.dec._cache_key(single_item_func, args, {})
-        return key
-
-
-    def _get_from_cache(self, single_item_func, items, more_args=None):
-        key_mapping = {self._get_key(single_item_func, item, more_args): item
-                       for item in items}
-        datas = {}
-        if hasattr(self.cache_client, 'get_all'):
-            data = self.cache_client.get_all(key_mapping.keys())
-            datas = {k:v for k,v in zip(items, data) if v}
-        else:
-            for key in keys:
-                data = self.cache_client.get(key)
-                if data:
-                    datas.setdefault(key_mapping.get(key), data)
-        return datas
-
-
-    def _set_in_cache(self, single_item_func, results, more_args=None):
-        for item in results:
-            res = results[item]
-            key = self._get_key(single_item_func, item, more_args)
-            self.cache_client.set(key, res)
+        self.get_multiple_strings = self.dec(self.get_multiple_strings)
+        self.get_multiple_ids = self.dec(self.get_multiple_ids)
 
 
 

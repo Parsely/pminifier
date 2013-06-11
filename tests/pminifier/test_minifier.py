@@ -11,7 +11,7 @@ class MinifierIntegrationTests(PMinifierIntegrationTest):
 
     def setUp(self):
         self.m = Minifier(self.cluster.mongo.conn, 'pminifier')
-
+        
     def test_int_to_base62(self):
         self.assertEqual('LfqqC7n0s', self.m.int_to_base62(9999999999999999))
         self.assertEqual('0U', self.m.int_to_base62(3294))
@@ -46,6 +46,26 @@ class MinifierIntegrationTests(PMinifierIntegrationTest):
             urls_oid.append((o_id, url))
             for check_id, check_url in urls_oid:
                 self.assertEqual(check_url, self.m.get_string(check_id))
+
+    def test_init_with_hostname(self):
+        self.m = Minifier("%s:%s" % (self.cluster.mongo.conn.host,
+                                     self.cluster.mongo.port),
+                                     'pminifier')
+        self.test_store_and_retrieve_same_url()
+
+    def test_store_and_retrieve_with_get_multiple_ids(self):
+        urls = ["http://google.com", "http://www.google.com"]
+        urls_to_ids = self.m.get_multiple_ids(urls, 'test')
+        self.assertEqual(set(urls), set(urls_to_ids.keys()))
+        ids_to_urls = self.m.get_multiple_strings(urls_to_ids.values())
+        self.assertEqual(set(urls_to_ids.values()), set(ids_to_urls.keys()))
+        self.assertEqual(set(urls_to_ids.keys()), set(ids_to_urls.values()))
+
+    def test_empty_get_multiple(self):
+        try:
+            self.assertEqual(self.m.get_multiple_ids([], 'test'), None)
+        except:
+            self.fail("passing no urls to get_multiple_ids threw an exception")
 
 if __name__ == '__main__':
     """Run the tests without caching enabled."""
