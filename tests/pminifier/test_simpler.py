@@ -1,3 +1,4 @@
+# - coding: utf-8 -
 import unittest
 import sys
 import os
@@ -27,6 +28,12 @@ class SimplerMinifierTests(PMinifierIntegrationTest):
             self.m._cache_key_names('str', ['string based key'])
         except:
             self.fail('_cache_key_names threw an exception')
+
+    def test_cache_key_unicode(self):
+        try:
+            self.m._cache_key_names('str', [u'nīcē ūnīcōde'])
+        except:
+            self.fail('_cache_key_names died on unicode')
 
     def test_store_and_retrieve_urls(self):
         urls_oid = []
