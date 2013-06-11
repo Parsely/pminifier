@@ -184,13 +184,7 @@ class SimplerMinifier(Minifier):
     def __init__(self, mongo_db, redis_conn, group_key):
         self._cache_conn = redis_conn
         self.group_key = group_key
-        if isinstance(mongo_db, tuple):
-            connection, name = mongo_db
-            super(SimplerMinifier,self).__init__(connection, name)
-            self._mongo_db = self.db
-        else:
-            self._mongo_db = mongo_db
-            super(SimplerMinifier,self).__init__(mongo_db.connection, mongo_db.name)
+        super(SimplerMinifier,self).__init__(mongo_db.connection, mongo_db.name)
 
 
     @lrudecorator(500)
@@ -218,7 +212,7 @@ class SimplerMinifier(Minifier):
             # decode from base62 to int
             from_int = {self.base62_to_int(item): item for item in items}
             criteria = {'_id': {'$in': from_int.keys()}}
-            urls = self._mongo_db.urlById.find(criteria, fields=['url'])
+            urls = self.db.urlById.find(criteria, fields=['url'])
             return {from_int[rec["_id"]]: rec["url"] for rec in urls}
 
         return self._get_items(minifier_ids, "id", lookup_func)
