@@ -35,6 +35,19 @@ class SimplerMinifierTests(PMinifierIntegrationTest):
         except:
             self.fail('_cache_key_names died on unicode')
 
+    def test_cache_key_equality(self):
+        keys_first = self.m._cache_key_names('str', ['string based key'])
+        keys_second = self.m._cache_key_names('str', ['string based key'])
+        
+        self.assertIsInstance(keys_first, dict)
+        self.assertEqual(set(keys_first.values()), set(keys_second.value()))
+        
+        keys_third = self.m._cache_key_names('str', ['another thing'])
+        self.assertNotEqual(set(keys_first.values()), set(keys_third.value()))
+        
+        keys_fourth = self.m._cache_key_names('id', ['another thing'])
+        self.assertNotEqual(set(keys_third.values()), set(keys_fourth.value()))
+
     def test_store_and_retrieve_urls(self):
         urls_oid = []
         urls = ["http://google.com", "http://www.google.com",
