@@ -40,13 +40,13 @@ class SimplerMinifierTests(PMinifierIntegrationTest):
         keys_second = self.m._cache_key_names('str', ['string based key'])
         
         self.assertIsInstance(keys_first, dict)
-        self.assertEqual(set(keys_first.values()), set(keys_second.value()))
+        self.assertEqual(set(keys_first.keys()), set(keys_second.keys()))
         
         keys_third = self.m._cache_key_names('str', ['another thing'])
-        self.assertNotEqual(set(keys_first.values()), set(keys_third.value()))
+        self.assertNotEqual(set(keys_first.keys()), set(keys_third.keys()))
         
         keys_fourth = self.m._cache_key_names('id', ['another thing'])
-        self.assertNotEqual(set(keys_third.values()), set(keys_fourth.value()))
+        self.assertNotEqual(set(keys_third.keys()), set(keys_fourth.keys()))
 
     def test_store_and_retrieve_urls(self):
         urls_oid = []
