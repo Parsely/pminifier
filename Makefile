@@ -1,6 +1,6 @@
 coverage:
 	pip install pminifier[test]
-	python setup.py nosetests --with-coverage --cover-package=mage -a '!needsfix' --cover-html
+	python setup.py nosetests --with-coverage --cover-package=pminifier -a '!needsfix' --cover-html
 
 lint:
 	pip install pminifier[lint]
