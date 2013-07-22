@@ -58,16 +58,18 @@ class Minifier(object):
             self.conn.admin.command({'shardcollection': fullname,
                                      'key': {'_id': 1}})
 
-    def get_id(self, url, groupkey):
-        """Returns the minified ID of the url"""
-        res = self._get_id_multi([url], groupkey, as_str=True)
+    def get_id(self, url, groupkey, dont_create=False):
+        """Returns the minified ID of the url.
+           If dont_create is specified, will not create entry if not found."""
+        res = self._get_id_multi([url], groupkey, as_str=True, dont_create=dont_create)
         return res[url] if res else None
 
     def get_multiple_ids(self, urls, groupkey):
-        """Returns the minified ID of the url"""
-        return self._get_id_multi(urls, groupkey, as_str=True)
+        """Returns the minified ID of the url.
+           If dont_create is specified, will not create entry if not found."""
+        return self._get_id_multi(urls, groupkey, as_str=True, dont_create=dont_create)
 
-    def _get_id_multi(self, urls, groupkey, as_str=False):
+    def _get_id_multi(self, urls, groupkey, as_str=False, dont_create=False):
         if not urls:
             return None
 
@@ -80,7 +82,7 @@ class Minifier(object):
         for entry in entries:
             res[entry['url']] = self.int_to_base62(entry['_id']) if as_str else entry[0]['_id']
 
-        if len(notfound) == 0:
+        if len(notfound) == 0 or dont_create:
             return res
 
         # Create new entry for keys not found
@@ -188,14 +190,17 @@ class SimplerMinifier(Minifier):
 
 
     @lrudecorator(500)
-    def get_id(self, url):
-        return self.get_ids([url]).get(url)
+    def get_id(self, url, dont_create=False):
+        return self.get_ids([url], dont_create).get(url)
 
-    def get_ids(self, urls):
-        """returns minified for the given urls"""
+    def get_ids(self, urls, dont_create=False):
+        """returns minified for the given urls
+           won't create missing entries if dont_create is specified
+        """
         lookup_func = lambda items: self._get_id_multi(items,
                                                        self.group_key,
-                                                       as_str=True)
+                                                       as_str=True,
+                                                       dont_create=dont_create)
         return self._get_items(urls, 'str', lookup_func)
 
 
