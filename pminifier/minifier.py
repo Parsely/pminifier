@@ -251,7 +251,7 @@ class SimplerMinifier(Minifier):
         """generates a {cache_key: key} dict for the given keys"""
         return {self.key_format.format(group_key=self.group_key,
                                        get_type=get_type,
-                                       hashed=md5.md5(unicode(key).encode("utf-8")).hexdigest()): key for key in keys}
+                                       hashed=md5.md5(_unicode_to_str(key)).hexdigest()): key for key in keys}
 
     def _store_cache(self, cache_dict):
         """saves the dict to cache with the default expiration"""
@@ -261,3 +261,11 @@ class SimplerMinifier(Minifier):
                 pipe.set(cache_key, val)
                 pipe.expire(cache_key, self.cache_expiry)
             pipe.execute()
+
+
+def _unicode_to_str(text, encoding=None, errors='strict'):
+    if encoding is None:
+        encoding = 'utf-8'
+    if isinstance(text, unicode):
+        return text.encode(encoding, errors)
+    return text
