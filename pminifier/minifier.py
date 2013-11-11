@@ -64,7 +64,7 @@ class Minifier(object):
         res = self._get_id_multi([url], groupkey, as_str=True, dont_create=dont_create)
         return res[url] if res else None
 
-    def get_multiple_ids(self, urls, groupkey):
+    def get_multiple_ids(self, urls, groupkey, dont_create=False):
         """Returns the minified ID of the url.
            If dont_create is specified, will not create entry if not found."""
         return self._get_id_multi(urls, groupkey, as_str=True, dont_create=dont_create)
