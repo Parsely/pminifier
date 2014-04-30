@@ -42,22 +42,6 @@ class Minifier(object):
             log.warning('Creating urlById index')
             self.db.urlById.ensure_index(index, background=False)
 
-        # Only way to check if we're in a sharded environment
-        try:
-            self.db.command({'isdbgrid': 1})
-        except OperationFailure as ex:
-            return # nope
-
-        db_info = self.conn.config.databases.find_one({'_id': self.db.name})
-        if not db_info or not db_info['partitioned']:
-            self.conn.admin.command({"enablesharding": self.db.name})
-
-        fullname = '%s.%s' % (self.db.name, 'urlById')
-        coll_info = self.conn.config.collections.find_one({'_id': fullname})
-        if not coll_info or 'key' not in coll_info:
-            self.conn.admin.command({'shardcollection': fullname,
-                                     'key': {'_id': 1}})
-
     def get_id(self, url, groupkey, dont_create=False):
         """Returns the minified ID of the url.
            If dont_create is specified, will not create entry if not found."""
