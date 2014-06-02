@@ -43,6 +43,7 @@ class Minifier(object):
         self.db = self.conn[mongo_db]
         self._init_mongo()
 
+    @mongodb_retry()
     def _init_mongo(self):
         """Initialize mongo indexes and sharding."""
         # Index only when necessary. Many attempts to make the same index
