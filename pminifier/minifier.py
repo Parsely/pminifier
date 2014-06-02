@@ -18,14 +18,14 @@ from pylru import lrudecorator
 log = logging.getLogger('pminifier')
 
 class mongodb_retry(object):
-    """Retry operation 100 times, wait 60 s between retries"""
+    """Retry operation 100 times, wait 60 seconds between retries"""
     def __call__(self,f):
         def f_retry(cls,*args, **kwargs):
             for i in range(100):
                 try:
                     return f(cls,*args, **kwargs)
                 except AutoReconnect:
-                    log.warning("Failed to connect to PRIMARY. Sleeping 60 minutes...")
+                    log.warning("Failed to connect to PRIMARY. Sleeping 60 seconds...")
                     time.sleep(60.0)
         return f_retry
 
