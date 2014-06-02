@@ -9,12 +9,25 @@ Maintain a collection of URL/ID pairs, to allow for 'shortening' a URL.
 import pymongo
 import math
 import md5
+import time
 
 import logging
-from pymongo.errors import OperationFailure
+from pymongo.errors import AutoReconnect
 from pylru import lrudecorator
 
 log = logging.getLogger('pminifier')
+
+class mongodb_retry(object):
+    """Retry operation 100 times, wait 60 s between retries"""
+    def __call__(self,f):
+        def f_retry(cls,*args, **kwargs):
+            for i in range(100):
+                try:
+                    return f(cls,*args, **kwargs)
+                except AutoReconnect:
+                    log.warning("Failed to connect to PRIMARY. Sleeping 60 minutes...")
+                    time.sleep(60.0)
+        return f_retry
 
 class Minifier(object):
     alphabet = '2FQYNEJAUsbGu41zndZTeocMai5H7OIjXkKg8qyt3WC9hLplxfVBm0wSRr6vPD'
@@ -53,6 +66,7 @@ class Minifier(object):
            If dont_create is specified, will not create entry if not found."""
         return self._get_id_multi(urls, groupkey, as_str=True, dont_create=dont_create)
 
+    @mongodb_retry()
     def _get_id_multi(self, urls, groupkey, as_str=False, dont_create=False):
         if not urls:
             return None
@@ -81,12 +95,14 @@ class Minifier(object):
 
         return res
 
+    @mongodb_retry()
     def _get_current_counter_value(self):
         counter = self.db.urlByIdMeta.find_and_modify(query={'_id': 'minifier_counter'},
                                                           update={'$inc': {'value': 1}},
                                                           upsert=True, new=True)
         return counter['value']
 
+    @mongodb_retry()
     def get_multiple_strings(self, ids):
         """Looks up the string by its IDs (minified or integer form)"""
         converted = {}
@@ -195,6 +211,7 @@ class SimplerMinifier(Minifier):
             raise Minifier.DoesNotExist('The URL provided does not exist.')
         return res
 
+    @mongodb_retry()
     def get_strings(self, minifier_ids):
         """Looks up the string by its ID (minified or integer form)"""
         def lookup_func(items):
