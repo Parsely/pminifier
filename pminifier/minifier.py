@@ -21,14 +21,13 @@ class mongodb_retry(object):
     """Retry operation 100 times, wait between retries"""
     def __call__(self,f):
         def f_retry(cls,*args, **kwargs):
-            wait_time = 1.1
             for i in range(100):
                 try:
                     return f(cls,*args, **kwargs)
                 except AutoReconnect:
-                    log.warning("Failed to connect to PRIMARY. Sleeping %.2f second..." % wait_time)
-                    time.sleep(wait_time)
-                    wait_time = wait_time ** 2
+                    log.warning("Failed to connect to PRIMARY. Sleeping 1 second")
+                    time.sleep(1.0)
+                    
         return f_retry
 
 class Minifier(object):
