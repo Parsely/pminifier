@@ -18,15 +18,17 @@ from pylru import lrudecorator
 log = logging.getLogger('pminifier')
 
 class mongodb_retry(object):
-    """Retry operation 100 times, wait 60 seconds between retries"""
+    """Retry operation 100 times, wait between retries"""
     def __call__(self,f):
         def f_retry(cls,*args, **kwargs):
+            wait_time = 1.1
             for i in range(100):
                 try:
                     return f(cls,*args, **kwargs)
                 except AutoReconnect:
-                    log.warning("Failed to connect to PRIMARY. Sleeping 60 seconds...")
-                    time.sleep(60.0)
+                    log.warning("Failed to connect to PRIMARY. Sleeping %.2f second..." % wait_time)
+                    time.sleep(wait_time)
+                    wait_time = wait_time ** 2
         return f_retry
 
 class Minifier(object):
@@ -35,6 +37,7 @@ class Minifier(object):
     class DoesNotExist(Exception):
         "The requested URL does not exist in the table."
 
+    @mongodb_retry()
     def __init__(self, mongo_host, mongo_db):
         if isinstance(mongo_host, basestring) or isinstance(mongo_host, list):
             self.conn = pymongo.Connection(mongo_host)
