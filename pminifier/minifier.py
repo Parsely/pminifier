@@ -6,12 +6,13 @@ Maintain a collection of URL/ID pairs, to allow for 'shortening' a URL.
 
         Unit tests can be found in minifier_tests.py
 """
-import pymongo
+import logging
 import math
 import md5
+import pymongo
 import time
 
-import logging
+
 from pymongo.errors import AutoReconnect
 from pylru import lrudecorator
 
@@ -179,8 +180,6 @@ class CachedMinifier(Minifier):
         self.get_multiple_strings = self.dec(self.get_multiple_strings)
         self.get_multiple_ids = self.dec(self.get_multiple_ids)
 
-
-
 class SimplerMinifier(Minifier):
     # mini:<group_key>:<type (id|str)>:<hash>
     key_format = "mini:{group_key}:{get_type}:{hashed}"
@@ -265,7 +264,6 @@ class SimplerMinifier(Minifier):
                 pipe.set(cache_key, val)
                 pipe.expire(cache_key, self.cache_expiry)
             pipe.execute()
-
 
 def _unicode_to_str(text, encoding=None, errors='strict'):
     if encoding is None:

@@ -1,7 +1,8 @@
-from cache import CacheBackend
-import redis
 import md5
+import redis
 import cPickle as pickle
+
+from cache import CacheBackend
 
 class RedisCacheBackend(CacheBackend):
     def __init__(self,params):

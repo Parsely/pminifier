@@ -1,7 +1,9 @@
-from cache import CacheBackend
-import pylibmc
 import md5
+import pylibmc
+
 from pylru import lrudecorator
+
+from cache import CacheBackend
 
 class MemcachedCacheBackend(CacheBackend):
     def __init__(self,params):
@@ -14,7 +16,7 @@ class MemcachedCacheBackend(CacheBackend):
 
     def get(self,key):
         return self.client.get(key)
-    
+
     def delete(self, key):
         self.client.delete(key)
 
@@ -25,7 +27,7 @@ class cached(object):
     """ This decorator wraps methods and caches their results with memcached. """
     def __init__(self,client):
         self.client = client
-    
+
     def _cache_key(self, func, args,kw):
         classname = args[0].__class__.__name__
         funcname = func.__name__

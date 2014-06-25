@@ -1,7 +1,7 @@
 class CacheBackend(object):
     def __init__(self,params):
         self.client = None
-                
+
     def get(self, key):
         pass
 
@@ -13,4 +13,3 @@ class CacheBackend(object):
 
     def clear(self):
         pass
-    
