@@ -3,7 +3,7 @@ import sys
 from setuptools import setup, find_packages
 
 install_requires = ['pymongo','pylru','redis']
-tests_require = ['mock', 'coverage']
+tests_require = ['mock', 'coverage', 'testinstances', 'mock']
 lint_requires = ['pep8', 'pyflakes']
 setup_requires = []
 

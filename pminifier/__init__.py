@@ -1,0 +1,1 @@
+from minifier import Minifier
